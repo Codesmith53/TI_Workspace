@@ -23,7 +23,7 @@
 #include "I2C.h"
 
 uBYTE   I2cTxBuff[I2C_BUFF_SIZE], I2cRecBuff[I2C_BUFF_SIZE];
-uBYTE	TxBuffCnt, RecBuffCnt;
+uBYTE	TxBuffCnt, RecBuffCnt, Transmitting = FALSE, Reciving = FALSE;
 
 //-----------------------------------------------------------------------------
 void I2CWriteQueue(uBYTE data)
@@ -48,44 +48,97 @@ uBYTE I2CReadQueue(void)
 	return data;
 }
 //-----------------------------------------------------------------------------
-uBYTE I2CReadRdy(void)
+void I2CReadRdy(uBYTE adx)
 {
     // Ensure stop condition got sent
     while (EUSCI_B0->CTLW0 & EUSCI_B_CTLW0_TXSTP);
 
-    EUSCI_B0->CTLW0 &= ~EUSCI_B_CTLW0_TR;   // Set RX mode
+   EUSCI_B0->IE |= EUSCI_B_IE_RXIE0 |      // Enable RX interrupt
+                   EUSCI_B_IE_STPIE;       // Enable stop interrupt
 
-    EUSCI_B0->IE |= EUSCI_B_IE_RXIE0 |      // Enable RX interrupt
-            EUSCI_B_IE_STPIE;               // Enable stop interrupt
+    // Set Slave address
+   if(adx)EUSCI_B0->I2CSA = adx;
+   else EUSCI_B0->I2CSA = I2C_SLAVE_ADX;
 
-    // I2C start condition
-    EUSCI_B0->CTLW0 |= EUSCI_B_CTLW0_TXSTT;
+   // Set RX mode
+   EUSCI_B0->CTLW0 &= ~EUSCI_B_CTLW0_TR;
 
-    return 1;
+   // I2C start condition
+   EUSCI_B0->CTLW0 |= EUSCI_B_CTLW0_TXSTT;
+
+}
+//-----------------------------------------------------------------------------
+uBYTE I2CReadByte(uBYTE adx)
+{
+    uBYTE rtn = 0;
+    uWORD timeout;
+
+    // make sure we are not in process of stopping
+    while (EUSCI_B0->CTLW0 & EUSCI_B_CTLW0_TXSTP);
+
+    // Set Slave address
+   if(adx)EUSCI_B0->I2CSA = adx;
+   else EUSCI_B0->I2CSA = I2C_SLAVE_ADX;
+
+   // Set RX mode
+   EUSCI_B0->CTLW0 &= ~EUSCI_B_CTLW0_TR;
+
+   // I2C start condition
+   EUSCI_B0->CTLW0 |= EUSCI_B_CTLW0_TXSTT;
+
+   timeout = 0xFFFF;
+   while ((EUSCI_B0->IFG & EUSCI_B_IFG_RXIFG0) == 0)
+   {
+       if(--timeout == 0) break;
+   }
+   rtn = EUSCI_B0->RXBUF;
+
+   return rtn;
 }
 //-----------------------------------------------------------------------------
 void I2CWriteByte(uBYTE adx, uBYTE data)
 {
+    uWORD timeout;
+
+    P3->OUT = 1;                       // Toggle P3.0 GPIO
+    // make sure we are not in process of stopping
     while (EUSCI_B0->CTLW0 & EUSCI_B_CTLW0_TXSTP);
 
-    EUSCI_B0->CTLW0 |=  EUSCI_B_CTLW0_TR;  // Set TX mode
-
-    if(adx)EUSCI_B0->I2CSA = adx;        // Slave address
+    // Set Slave address
+    if(adx)EUSCI_B0->I2CSA = adx;
     else EUSCI_B0->I2CSA = I2C_SLAVE_ADX;
 
-    EUSCI_B0->TXBUF = data;
+    // Set TX mode
+    EUSCI_B0->CTLW0 |=  EUSCI_B_CTLW0_TR;
 
     // I2C start condition
     EUSCI_B0->CTLW0 |= EUSCI_B_CTLW0_TXSTT;
 
+    // wait for start bit complete to send data
+    timeout = 0xFFFF;
+    while (EUSCI_B0->CTLW0 & EUSCI_B_CTLW0_TXSTT)
+    {
+        if(--timeout == 0) break;
+    }
 
+    if(EUSCI_B0->IFG & EUSCI_B_IFG_TXIFG0);  // wait for add tx
+    {
+       I2cTxBuff[0] = data;
+       EUSCI_B0->TXBUF = I2cTxBuff[0];
+    }
+
+    P3->OUT ^= BIT0;                       // Toggle P3.0 GPIO
 }
-
-
+//-----------------------------------------------------------------------------
+void I2CSetAdxBytes(uBYTE adx, uBYTE num)
+{
+    EUSCI_B0->TBCNT = num;          // Set number of bytes to be received
+    if(adx)EUSCI_B0->I2CSA = adx;   // Set Slave address
+    else EUSCI_B0->I2CSA = I2C_SLAVE_ADX;
+}
 //-----------------------------------------------------------------------------
 void I2CInit(void)
 {
-    
 	TxBuffCnt = 0;
 	RecBuffCnt = 0;
 
@@ -106,7 +159,6 @@ void I2CInit(void)
             EUSCI_B_CTLW0_SYNC |            // Sync mode
             EUSCI_B_CTLW0_SSEL__SMCLK;      // SMCLK
 
-    //    EUSCI_B_CTLW0_TR |              // Transmit enabled
 
     EUSCI_B0->CTLW1 |= EUSCI_B_CTLW1_ASTP_2;// Automatic stop generated
                                             // after EUSCI_B0->TBCNT is reached
@@ -114,62 +166,52 @@ void I2CInit(void)
     EUSCI_B0->TBCNT = 0x0001;               // number of bytes to be received
     EUSCI_B0->I2CSA = I2C_SLAVE_ADX;        // Slave address
     EUSCI_B0->CTLW0 &= ~EUSCI_A_CTLW0_SWRST;// Release eUSCI from reset
-
+/*
     EUSCI_B0->IE |= EUSCI_A_IE_RXIE |       // Enable receive interrupt
             EUSCI_B_IE_NACKIE |             // Enable NACK interrupt
             EUSCI_B_IE_BCNTIE;              // Enable byte counter interrupt
-
+*/
+    EUSCI_B0->IE |= EUSCI_B_IE_TXIE0 |      // Enable transmit interrupt
+            EUSCI_B_IE_STPIE;               // Enable stop interrupt
 }
-
 //-----------------------------------------------------------------------------
 // This is the I2C isr based upon TI MSP432 series chip. It is configured to run
 // real time off an event generated interrupt on I2C dedicated pins
 void EUSCIB0_IRQHandler(void)
 {
-    P3->OUT ^= BIT0;                    // Toggle P3.0 GPIO
-
     //----------- Recieve data -------------------------
-    if (EUSCI_B0->IFG & EUSCI_B_IFG_NACKIFG)
+    if (EUSCI_B0->IFG & EUSCI_B_IFG_RXIFG0) // generated when character has been received
     {
-        EUSCI_B0->IFG &= ~EUSCI_B_IFG_NACKIFG;
+        EUSCI_B0->IFG &= ~EUSCI_B_IFG_RXIFG0; // clear bit
+//      I2cRecBuff[RecBuffCnt++] = EUSCI_B0->RXBUF; // read data into buffer
+//      if (RecBuffCnt >= sizeof(I2cRecBuff)) RecBuffCnt = 0;
     }
-
-    if (EUSCI_B0->IFG & EUSCI_B_IFG_RXIFG0)
-    {
-        EUSCI_B0->IFG &= ~EUSCI_B_IFG_RXIFG0;
-        // Get RX data
-        I2cRecBuff[RecBuffCnt++] = EUSCI_B0->RXBUF;
-        if (RecBuffCnt >= sizeof(I2cRecBuff)) RecBuffCnt = 0;
-    }
-
-    if (EUSCI_B0->IFG & EUSCI_B_IFG_BCNTIFG) EUSCI_B0->IFG &= ~EUSCI_B_IFG_BCNTIFG;
 
     //----------- Transmit data -------------------------
-    if (EUSCI_B0->IFG & EUSCI_B_IFG_STPIFG)    // Stop interrupt rec
+    if (EUSCI_B0->IFG & EUSCI_B_IFG_TXIFG0)    // TX reg is ready after start is issued
+    {
+        EUSCI_B0->IFG &= ~EUSCI_B_IFG_TXIFG0;  // clear buffer empty interrupt flag
+    }
+
+    //----------- Stop interrupt -------------------------
+    if (EUSCI_B0->IFG & EUSCI_B_IFG_STPIFG)
     {
         // Clear stop condition int flag
         EUSCI_B0->IFG &= ~EUSCI_B_IFG_STPIFG;
     }
 
-    if (EUSCI_B0->IFG & EUSCI_B_IFG_TXIFG0)    // Tx buffer empty
+    //----------- NO ACK timeout -------------------------
+    if (EUSCI_B0->IFG & EUSCI_B_IFG_NACKIFG)
     {
-        // Only transmit the data if it is less than the
-        // transmit data size
-        if (TxBuffCnt < I2C_BUFF_SIZE)
-        {
-            EUSCI_B0->TXBUF = I2cTxBuff[TxBuffCnt++];
-            if(TxBuffCnt >= I2C_BUFF_SIZE) TxBuffCnt = 0;
-        }
-        else
-        {
-            // Else load a dummy byte which does not get clocked out
-            // as the STOP bit will get triggered on the last byte
-            // since the TXBUF is double buffered
-            EUSCI_B0->TXBUF = 0;
-        }
-
-        TxBuffCnt++;
+      EUSCI_B0->IFG &= ~EUSCI_B_IFG_NACKIFG;
     }
 
-    P3->OUT ^= BIT0;                    // Toggle P3.0 GPIO
+    //----------- Reached byte count -------------------------
+    if (EUSCI_B0->IFG & EUSCI_B_IFG_BCNTIFG)
+    {
+        EUSCI_B0->IFG &= ~EUSCI_B_IFG_BCNTIFG;
+    }
+
+
+
 }

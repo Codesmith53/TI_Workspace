@@ -1,0 +1,53 @@
+<NotepadPlus>
+    <Project name="src">
+        <Folder name=".launches">
+            <File name=".launches\MSP432Base.launch" />
+        </Folder>
+        <Folder name=".settings">
+            <File name=".settings\com.ti.ccstudio.project.core.prefs" />
+            <File name=".settings\org.eclipse.cdt.codan.core.prefs" />
+            <File name=".settings\org.eclipse.cdt.debug.core.prefs" />
+            <File name=".settings\org.eclipse.core.resources.prefs" />
+        </Folder>
+        <Folder name="Debug">
+            <File name="Debug\ccsObjs.opt" />
+            <File name="Debug\DIO.d" />
+            <File name="Debug\DIO.obj" />
+            <File name="Debug\I2C.d" />
+            <File name="Debug\I2C.obj" />
+            <File name="Debug\I2Ca.d" />
+            <File name="Debug\I2Ca.obj" />
+            <File name="Debug\main.d" />
+            <File name="Debug\main.obj" />
+            <File name="Debug\makefile" />
+            <File name="Debug\MSP432Base.map" />
+            <File name="Debug\MSP432Base.out" />
+            <File name="Debug\MSP432Base_linkInfo.xml" />
+            <File name="Debug\objects.mk" />
+            <File name="Debug\sources.mk" />
+            <File name="Debug\startup_msp432p4111_ccs.d" />
+            <File name="Debug\startup_msp432p4111_ccs.obj" />
+            <File name="Debug\subdir_rules.mk" />
+            <File name="Debug\subdir_vars.mk" />
+            <File name="Debug\system_msp432p4111.d" />
+            <File name="Debug\system_msp432p4111.obj" />
+        </Folder>
+        <Folder name="targetConfigs">
+            <File name="targetConfigs\MSP432P4111.ccxml" />
+            <File name="targetConfigs\readme.txt" />
+        </Folder>
+        <File name=".ccsproject" />
+        <File name=".cproject" />
+        <File name=".project" />
+        <File name="App.h" />
+        <File name="DIO.c" />
+        <File name="DIO.h" />
+        <File name="I2C.c" />
+        <File name="I2C.h" />
+        <File name="main.c" />
+        <File name="msp432p4111.cmd" />
+        <File name="notepad" />
+        <File name="startup_msp432p4111_ccs.c" />
+        <File name="system_msp432p4111.c" />
+    </Project>
+</NotepadPlus>

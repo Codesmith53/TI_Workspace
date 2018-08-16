@@ -1,12 +1,25 @@
-/*
- * App.h
- *
- * Created: 8/19/2017 11:36:57 AM
- *  Author: Jess Fisher
- */ 
+//-----------------------------------------------------------------------------
+// @file: app.hpp
+// @brief: main app support for system
+//
+// @details: TI CCP complier support
+//
+// @copyright: CONFIDENTIAL Property of Jess Fisher Copyright 2018
+//
+// @All rights reserved: Copying or other reproduction of this program except
+// for archival purposes is prohibited without the prior written consent of
+// Jess Fisher.
+//
+// Jess Fisher Copyright, Hoquiam, WA, USA
+//
+// @author:  Jess Fisher
+// @date: 07/14/2018
+// @version: 1.0
+//
+//-----------------------------------------------------------------------------
 
-#ifndef APP_H_
-#define APP_H_
+#ifndef APP_HPP_
+#define APP_HPP_
 
 #define TARGET TI_MSP430
 #define APPVERSION	001
@@ -17,6 +30,8 @@
 #define FALSE	0
 #define uBYTE	unsigned char
 #define uWORD	unsigned int
+#define uLONG   unsigned long
+#define boolean unsigned char
 
 #define HIGH    1
 #define LOW     0
@@ -41,8 +56,8 @@
 #define DHT11PIN	4
 #define RELAY1		3
 
-extern uBYTE SystemPwr;
+extern boolean SystemPwr(void);
 extern void AppInit(void);
-extern unsigned char MainApp(void);
+extern boolean MainApp(void);
 
-#endif /* APP_H_ */
+#endif /* APP_HPP_ */

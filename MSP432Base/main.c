@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include "App.h"
 #include "I2C.h"
+#include "Sensors.h"
 
 #define TIMER_ISR_CNT 3000
 
@@ -28,7 +29,7 @@ uBYTE T50mSFlag;
 uBYTE T100mSFlag;
 uBYTE T250mSFlag;
 uBYTE T1SFlag;
-uBYTE SystemPwr;
+
 
 uBYTE TaskCount1ms;
 uBYTE TaskCount5ms;
@@ -42,9 +43,10 @@ uWORD SystemFaults;
 void IoInit(void)
 {
 
-    //    WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;             // Stop WDT
+      WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;             // Stop WDT
+
     // Configure the watchdog timer to timeout every ~250ms
-    WDT_A->CTL = WDT_A_CTL_PW |WDT_A_CTL_IS_5;
+//    WDT_A->CTL = WDT_A_CTL_PW |WDT_A_CTL_IS_5;
 
     P1->DIR |= BIT0;                        // P1.0 set as output
     P3->DIR |= BIT0;                        // P3.0 set as output
@@ -62,6 +64,7 @@ void TaskInit(void)
     TaskCount250ms = 24;
     TaskCount1sec = 99;
 }
+
 //-----------------------------------------------------------------------------
 void TaskCounter(void)
 {
@@ -135,23 +138,26 @@ void setup()
 {
     IoInit();
     TaskInit();
-    SystemPwr = OFF;
     SystemFaults = FALSE;
 
     // Init and enable timer allowing task timing
     TimerInit();
+
     // Init I2C communication
     I2CInit();
 
+    // Init general purpose sensors
+    InitSensors();
+
     // Application init to be call last after rest of system init is complete
-    // AppInit();
+    AppInit();
 
 }
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 int main(void)
 {
-    volatile uBYTE rx_test,tx_test=0x55;
+    volatile uBYTE rx_test,tx_test='A';
 
     setup();
 
@@ -160,15 +166,12 @@ int main(void)
     {
         if(T50mSFlag)
         {
-            I2CWriteByte(I2C_SLAVE_ADX, tx_test);
             T50mSFlag = FALSE;
-
         }
         else if(T100mSFlag)
         {
-            uBYTE dmy = I2CReadRdy();
-            rx_test = I2CReadQueue();
             T100mSFlag = FALSE;
+
         }
         else if(T250mSFlag)
         {
@@ -176,12 +179,12 @@ int main(void)
         }
         else if(T1SFlag)
         {
-            P1->OUT ^= BIT0;                    // Blink P1.0 HeartbeatLED
+            MainApp();
             T1SFlag=FALSE;
+            P1->OUT ^= BIT0;                    // Blink P1.0 HeartbeatLED
         }
 
-
-        WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_CNTCL | WDT_A_CTL_IS_5; // Pet the dog
+//        WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_CNTCL | WDT_A_CTL_IS_5; // Pet the dog
     }
 }
 

@@ -8,14 +8,16 @@
 #ifndef I2C_H_
 #define I2C_H_
 
-#define I2C_BUFF_SIZE 5
-#define I2C_SLAVE_ADX 0x0044
+#define I2C_BUFF_SIZE 10
+#define I2C_SLAVE_ADX 0x0077
 #define I2C_MSTR_ADX  0x00AA
 
 extern void I2CInit(void);
 extern uBYTE I2CReadQueue(void);
 extern void I2CWriteQueue(uBYTE data);
-extern uBYTE I2CReadRdy(void);
+extern void I2CReadRdy(uBYTE adx);
 extern void I2CWriteByte(uBYTE adx, uBYTE data);
+extern void I2CSetAdxBytes(uBYTE adx, uBYTE num);
+extern uBYTE I2CReadByte(uBYTE adx);
 
 #endif /* I2C_H_ */
